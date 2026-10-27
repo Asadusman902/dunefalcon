@@ -4,27 +4,23 @@ img{max-width:100%}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 
 /* Layout: desert-dusk landing (hero over dune horizon → packages → evening timeline → booking desk) + #admin operations console */
+/* Light sand theme on every device (matches the white/gold logo), whatever the phone's dark-mode setting. */
 :root{
-  --bg:#16121d; --surface:#1f1928; --surface-2:#282133; --line:#3a3047;
-  --fg:#f3eadc; --muted:#b2a597; --gold:#dfb062; --gold-ink:#1b1408; --ember:#e2804f;
-  --sky-1:#2a1f3a; --sky-2:#6b3a4a; --sky-3:#d9824f; --dune-1:#8a5a36; --dune-2:#5a3a26; --dune-3:#2e2019;
-  --ok:#7fc79c; --warn:#e8bd55; --bad:#e3725f; --info:#8fb3e8;
+  --bg:#f3eee7; --surface:#fbf8f3; --surface-2:#ece4d8; --line:#d8ccbb;
+  --fg:#23192c; --muted:#6d6070; --gold:#94631a; --gold-ink:#fffaf0; --ember:#b5522a;
+  --sky-1:#f1d6b6; --sky-2:#eab088; --sky-3:#e48a55; --dune-1:#d29a62; --dune-2:#b07644; --dune-3:#7a4e2c;
+  --ok:#2f8a57; --warn:#a87a10; --bad:#b9432f; --info:#3a67a8;
   --f-display:"Marcellus", "Georgia", serif;
   --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --r:10px;
-  color-scheme:dark;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
-  --bg:#f3eee7; --surface:#fbf8f3; --surface-2:#ece4d8; --line:#d8ccbb;
-  --fg:#23192c; --muted:#6d6070; --gold:#94631a; --gold-ink:#fffaf0; --ember:#b5522a;
-  --sky-1:#f1d6b6; --sky-2:#eab088; --sky-3:#e48a55; --dune-1:#d29a62; --dune-2:#b07644; --dune-3:#7a4e2c;
-  --ok:#2f8a57; --warn:#a87a10; --bad:#b9432f; --info:#3a67a8; color-scheme:light;}}
-:root[data-theme="light"]{
-  --bg:#f3eee7; --surface:#fbf8f3; --surface-2:#ece4d8; --line:#d8ccbb;
-  --fg:#23192c; --muted:#6d6070; --gold:#94631a; --gold-ink:#fffaf0; --ember:#b5522a;
-  --sky-1:#f1d6b6; --sky-2:#eab088; --sky-3:#e48a55; --dune-1:#d29a62; --dune-2:#b07644; --dune-3:#7a4e2c;
-  --ok:#2f8a57; --warn:#a87a10; --bad:#b9432f; --info:#3a67a8; color-scheme:light;}
+:root[data-theme="dark"]{
+  --bg:#16121d; --surface:#1f1928; --surface-2:#282133; --line:#3a3047;
+  --fg:#f3eadc; --muted:#b2a597; --gold:#dfb062; --gold-ink:#1b1408; --ember:#e2804f;
+  --sky-1:#2a1f3a; --sky-2:#6b3a4a; --sky-3:#d9824f; --dune-1:#8a5a36; --dune-2:#5a3a26; --dune-3:#2e2019;
+  --ok:#7fc79c; --warn:#e8bd55; --bad:#e3725f; --info:#8fb3e8; color-scheme:dark;}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
