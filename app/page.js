@@ -1,4 +1,3 @@
-import Script from "next/script";
 import { LANDING_HTML } from "@/lib/markup";
 import { getConfig } from "@/lib/data";
 import { DEFAULT_PACKAGES, DEFAULT_SCHEDULE, DEFAULT_BUSINESS } from "@/lib/defaults";
@@ -18,7 +17,9 @@ export default async function Home() {
     <>
       <div dangerouslySetInnerHTML={{ __html: LANDING_HTML }} />
       <script id="df-config" type="application/json" dangerouslySetInnerHTML={{ __html: json }} />
-      <Script src="/booking.js" strategy="afterInteractive" />
+      {/* deferred scripts run in order: translations first */}
+      <script src="/booking-i18n.js" defer />
+      <script src="/booking.js" defer />
     </>
   );
 }
