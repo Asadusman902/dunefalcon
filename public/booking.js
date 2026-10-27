@@ -300,8 +300,9 @@ Total: ${aed(L.total)}`;
 
   document.addEventListener("click", (e) => {
     const el = e.target.closest("button,a"); if (!el) return;
-    if (el.dataset.book) { bk.pkg = el.dataset.book; lastLead = null; renderBooking(); $("#book").scrollIntoView({ behavior: "smooth" }); return; }
-    if (el.dataset.pkg) { bk.pkg = el.dataset.pkg; renderBooking(); return; }
+    // A new package starts step 3 fresh, so customers choose morning or evening themselves.
+    if (el.dataset.book) { if (bk.pkg !== el.dataset.book) bk.slot = bk.time = null; bk.pkg = el.dataset.book; lastLead = null; renderBooking(); $("#book").scrollIntoView({ behavior: "smooth" }); return; }
+    if (el.dataset.pkg) { if (bk.pkg !== el.dataset.pkg) bk.slot = bk.time = null; bk.pkg = el.dataset.pkg; renderBooking(); return; }
     if (el.dataset.date) { bk.date = el.dataset.date; renderBooking(); return; }
     if (el.dataset.month) {
       const [y, m] = bk.month.split("-").map(Number), d = new Date(Date.UTC(y, m - 1 + +el.dataset.month, 1));
