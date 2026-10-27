@@ -52,8 +52,8 @@ Until WhatsApp is set up, bookings still save and email normally. The site just 
 ## 4. Deploy on Vercel (5 min)
 
 **Option A: GitHub (recommended)**
-1. The code is on GitHub: `chaudhryasadusman0987-spec/dunefalcon` (private).
-2. vercel.com → log in → **Add New → Project** → import `chaudhryasadusman0987-spec/dunefalcon` (connect GitHub as the chaudhryasadusman0987-spec account).
+1. The code is on GitHub: `Asadusman902/dunefalcon` (private).
+2. vercel.com → log in → **Add New → Project** → import `Asadusman902/dunefalcon` (connect GitHub as the Asadusman902 account).
 3. Before clicking Deploy, open **Environment Variables** and add every variable from `.env.example`.
 4. Deploy.
 
