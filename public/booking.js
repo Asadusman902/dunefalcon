@@ -2,7 +2,7 @@
 (function () {
   const S = JSON.parse(document.getElementById("df-config").textContent);
   const I = window.DF_I18N;
-  const bk = { pkg: null, date: null, slot: null, adults: 2, kids: 0, addons: {}, month: null };
+  const bk = { pkg: null, date: null, slot: null, time: null, adults: 2, kids: 0, addons: {}, month: null };
   const cx = { open: false, busy: false, done: "", err: "", ref: "", phone: "" };
   let lastLead = null, sending = false, lang = pickLang();
 
@@ -37,9 +37,16 @@
     return d.toISOString().slice(0, 10);
   }
   function pickupEpoch(k, time) { const [y, m, d] = keyParts(k); const [h, mi] = (time || "00:00").split(":").map(Number); return Date.UTC(y, m - 1, d, h - DXB, mi); }
-  function slotOpen(k, slot) {
+  function timeOpen(k, time) {
     if (!S.schedule.openDays.includes(weekday(k)) || (S.schedule.blocked || []).includes(k)) return false;
-    return pickupEpoch(k, slot.time) - Date.now() >= (S.schedule.cutoffHours || 0) * 3600e3;
+    return pickupEpoch(k, time) - Date.now() >= (S.schedule.cutoffHours || 0) * 3600e3;
+  }
+  const slotTimes = (slot) => slot.times || [slot.time];
+  const slotOpen = (k, slot) => slotTimes(slot).some((tm) => timeOpen(k, tm));
+  const slotName = (slot) => (I.strings[lang] || {})["slot_" + slot.id] || I.strings.en["slot_" + slot.id] || slot.label;
+  function fmtTime(hm) {
+    const [h, m] = hm.split(":").map(Number);
+    return new Intl.DateTimeFormat(loc(), { hour: "numeric", minute: "2-digit", timeZone: "UTC", ...(lang === "en" ? { hour12: true } : {}) }).format(new Date(Date.UTC(2000, 0, 1, h, m)));
   }
   const lastDay = () => dubaiKey(S.schedule.bookAheadDays || 180);
 
@@ -88,7 +95,8 @@
     $("#slotGlance").innerHTML = S.schedule.slots.map((s) => {
       const pk = activePkgs().filter((p) => (p.slots || []).includes(s.id));
       const from = pk.length ? Math.min(...pk.map((p) => (p.unit === "person" ? p.price : p.price / (p.maxGuests || 6)))) : null;
-      return `<div class="row"><span><b>${esc(s.label)}</b><br><span class="muted mono">${esc(s.time)} pickup</span></span><span class="mono" style="text-align:right">${from != null ? "from<br>" + aed(from) : ""}</span></div>`;
+      const ts = slotTimes(s);
+      return `<div class="row"><span><b>${esc(s.label)}</b><br><span class="muted mono">${esc(ts[0])}${ts.length > 1 ? " – " + esc(ts[ts.length - 1]) : ""} pickup</span></span><span class="mono" style="text-align:right">${from != null ? "from<br>" + aed(from) : ""}</span></div>`;
     }).join("");
     const pk = activePkgs();
     $("#pkGrid").innerHTML = pk.length ? pk.map((p) => `<article class="pk${p.popular ? " pop" : ""}">
@@ -151,9 +159,16 @@
     $("#bPkg").innerHTML = pk.map((x) => `<button type="button" class="opt" aria-pressed="${x.id === bk.pkg}" data-pkg="${esc(x.id)}">${esc(x.name)}<small class="mono">${aed(x.price)} ${esc(x.unit === "vehicle" ? t("per_car") : t("per_adult"))}</small></button>`).join("");
     const pslots = S.schedule.slots.filter((s) => !p || !(p.slots || []).length || p.slots.includes(s.id));
     renderCalendar(pslots);
-    const sl = pslots.map((s) => ({ s, open: bk.date && slotOpen(bk.date, s) }));
-    if (!sl.find((x) => x.s.id === bk.slot && x.open)) bk.slot = sl.find((x) => x.open)?.s.id || null;
-    $("#bSlots").innerHTML = sl.length ? sl.map(({ s, open }) => `<button type="button" class="opt" data-slot="${esc(s.id)}" aria-pressed="${s.id === bk.slot}" ${open ? "" : "disabled"}>${esc(s.label)}<small class="mono">${esc(t("pickup_t", { t: s.time }))}</small></button>`).join("") : `<span class="muted">${esc(t("no_slots"))}</span>`;
+    // Step 3: morning / evening first, then that slot's pickup times.
+    const sl = pslots.map((s) => ({ s, open: !!bk.date && slotOpen(bk.date, s) }));
+    const openSl = sl.filter((x) => x.open);
+    if (!openSl.find((x) => x.s.id === bk.slot)) bk.slot = openSl.length === 1 ? openSl[0].s.id : null;
+    const cur = slotById(bk.slot);
+    if (!cur || !bk.date || !timeOpen(bk.date, bk.time) || !slotTimes(cur).includes(bk.time)) bk.time = null;
+    const periods = sl.map(({ s, open }) => { const ts = slotTimes(s); return `<button type="button" class="opt period" data-slot="${esc(s.id)}" aria-pressed="${s.id === bk.slot}" ${open ? "" : "disabled"}><b>${esc(slotName(s))}</b><small class="mono">${esc(fmtTime(ts[0]))}${ts.length > 1 ? " – " + esc(fmtTime(ts[ts.length - 1])) : ""}</small></button>`; }).join("");
+    const times = cur ? `<div class="times-box"><div class="times-h">${esc(t("times_title", { slot: slotName(cur) }))}</div><div class="times">${slotTimes(cur).map((tm) => `<button type="button" class="opt tm" data-time="${tm}" aria-pressed="${tm === bk.time}" ${timeOpen(bk.date, tm) ? "" : "disabled"}>${esc(fmtTime(tm))}</button>`).join("")}</div></div>`
+      : sl.length ? `<p class="muted" style="margin:0;font-size:13px">${esc(t("choose_period"))}</p>` : "";
+    $("#bSlots").innerHTML = sl.length ? `<div class="opts">${periods}</div>${times}` : `<span class="muted">${esc(t("no_slots"))}</span>`;
     $("#oAdults").textContent = bk.adults; $("#oKids").textContent = bk.kids;
     $("#guestNote").textContent = p && p.unit === "vehicle" ? t("note_car", { n: bk.adults + bk.kids, c: Math.max(1, Math.ceil((bk.adults + bk.kids) / (p.maxGuests || 6))) }) : t("note_kids");
     $("#bAddons").innerHTML = (S.business.addons || []).map((a) => `<label class="check"><input type="checkbox" id="ad-${esc(a.id)}" data-addon="${esc(a.id)}" ${bk.addons[a.id] ? "checked" : ""}>${esc(a.name)}<span class="p">${aed(a.price)}${a.unit === "person" ? " " + esc(t("pp")) : ""}</span></label>`).join("") || `<span class="muted">${esc(t("no_addons"))}</span>`;
@@ -180,7 +195,7 @@ Total: ${aed(L.total)}`;
       box.innerHTML = `<div class="done"><div class="eyebrow">${esc(t("done_eyebrow"))}</div><h3>${esc(t("done_thanks", { name: L.name.split(" ")[0] }))}</h3>
         <div class="ref-box"><span class="muted">${esc(t("your_ref"))}</span><div class="ref-row"><span class="ref" id="doneRef">${esc(L.ref)}</span><button class="btn sm" type="button" data-copy="doneRef">${esc(t("copy"))}</button></div><small class="muted">${esc(t("done_save"))}</small></div>
         <div class="sl"><span>${esc(L.packageName)}</span><span>${esc(fmtDate(L.date))}</span></div>
-        <div class="sl"><span>${esc(t("pickup"))}</span><span>${esc(L.slotLabel)} ${esc(L.slotTime)}</span></div>
+        <div class="sl"><span>${esc(t("pickup"))}</span><span>${esc(slotName(slotById(L.slot) || { id: "", label: L.slotLabel }))} · ${esc(fmtTime(L.slotTime))}</span></div>
         <div class="sl"><span>${esc(t("guests"))}</span><span>${L.adults} + ${L.kids}</span></div>
         <div class="total"><span>${esc(t("pay_pickup"))}</span><b>${aed(L.total)}</b></div>
         <p style="margin:0;font-size:14px">${esc(t("done_note"))}${L.email ? " " + esc(t("done_email")) : ""}</p>
@@ -191,7 +206,7 @@ Total: ${aed(L.total)}`;
     const q = quote(), sl = slotById(bk.slot), name = $("#fName").value.trim(), pickup = $("#fPickup").value.trim();
     box.innerHTML = `<div class="eyebrow">${esc(t("sum_eyebrow"))}</div><h3>${esc(q.pkg?.name || t("choose_pkg"))}</h3>
       <div class="sl"><span>${esc(t("date"))}</span><span>${esc(fmtDate(bk.date))}</span></div>
-      <div class="sl"><span>${esc(t("pickup"))}</span><span>${sl ? esc(sl.label + " " + sl.time) : "—"}</span></div>
+      <div class="sl"><span>${esc(t("pickup"))}</span><span>${sl ? esc(slotName(sl) + (bk.time ? " · " + fmtTime(bk.time) : "")) : "—"}</span></div>
       ${q.lines.map((l) => `<div class="sl"><span>${esc(l[0])}</span><span>${aed(l[1])}</span></div>`).join("")}
       ${name ? `<div class="sl"><span>${esc(t("lead_guest"))}</span><span class="txt">${esc(name)}</span></div>` : ""}
       ${pickup ? `<div class="sl"><span>${esc(t("pickup"))}</span><span class="txt">${esc(pickup)}</span></div>` : ""}
@@ -223,7 +238,7 @@ Total: ${aed(L.total)}`;
   }
 
   async function submitBooking() {
-    if (!bk.pkg || !bk.date || !bk.slot) return renderSummary(t("err_choose"));
+    if (!bk.pkg || !bk.date || !bk.slot || !bk.time) return renderSummary(t(bk.slot && !bk.time ? "err_time" : "err_choose"));
     const bad = ["fName", "fPhone", "fEmail"].filter((id) => !checkField(id));
     if (bad.length) { renderSummary(t(bad[0] === "fName" ? "err_name" : bad[0] === "fPhone" ? "err_phone" : "err_email")); return $("#" + bad[0]).focus(); }
     const iso = $("#fCountry").value;
@@ -232,7 +247,7 @@ Total: ${aed(L.total)}`;
       const r = await fetch("/api/bookings", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          packageId: bk.pkg, date: bk.date, slot: bk.slot, adults: bk.adults, kids: bk.kids,
+          packageId: bk.pkg, date: bk.date, slot: bk.slot, time: bk.time, adults: bk.adults, kids: bk.kids,
           addons: Object.keys(bk.addons).filter((k) => bk.addons[k]),
           name: $("#fName").value.trim(), phone: phoneValue(), email: $("#fEmail").value.trim(),
           country: iso ? regionName(iso, "en") : "", lang,
@@ -292,7 +307,8 @@ Total: ${aed(L.total)}`;
       const [y, m] = bk.month.split("-").map(Number), d = new Date(Date.UTC(y, m - 1 + +el.dataset.month, 1));
       bk.month = d.toISOString().slice(0, 7); renderBooking(); return;
     }
-    if (el.dataset.slot) { bk.slot = el.dataset.slot; renderBooking(); return; }
+    if (el.dataset.slot) { if (bk.slot !== el.dataset.slot) bk.time = null; bk.slot = el.dataset.slot; renderBooking(); return; }
+    if (el.dataset.time) { bk.time = el.dataset.time; renderBooking(); return; }
     if (el.dataset.g) { const k = el.dataset.g, min = k === "adults" ? 1 : 0; bk[k] = Math.min(30, Math.max(min, bk[k] + +el.dataset.d)); renderBooking(); return; }
     if (el.id === "submitBk") { submitBooking(); return; }
     if (el.id === "newBooking") { lastLead = null; renderSummary(); return; }

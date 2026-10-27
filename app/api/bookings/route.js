@@ -1,6 +1,6 @@
 import { getConfig, bookedGuests, leadIn } from "@/lib/data";
 import { supabase } from "@/lib/supabase";
-import { slotOpen, quote, makeRef, dubaiDayPlus } from "@/lib/booking-rules";
+import { timeOpen, quote, makeRef, dubaiDayPlus } from "@/lib/booking-rules";
 import { notifyBooking } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,9 @@ export async function POST(req) {
   if (!pkg) return bad("That package isn't available any more. Please refresh the page.", 400, "pkg");
   const slot = schedule.slots.find((s) => s.id === b.slot);
   if (!slot || ((pkg.slots || []).length && !pkg.slots.includes(slot.id))) return bad("Choose a pickup time for this package.", 400, "choose");
-  if (!slotOpen(schedule, date, slot) || date > dubaiDayPlus(schedule.bookAheadDays || 180)) return bad("That date or pickup time is closed for online booking. Please pick another or message us on WhatsApp.", 400, "closed");
+  const time = str(b.time, 5);
+  if (!(slot.times || []).includes(time)) return bad("Choose a pickup time for this package.", 400, "choose");
+  if (!timeOpen(schedule, date, time) || date > dubaiDayPlus(schedule.bookAheadDays || 180)) return bad("That date or pickup time is closed for online booking. Please pick another or message us on WhatsApp.", 400, "closed");
 
   const already = await bookedGuests(date, slot.id);
   if (already + adults + kids > (slot.capacity || 0)) {
@@ -43,7 +45,7 @@ export async function POST(req) {
   const lead = {
     ref: makeRef(date), status: "new", source: "Booking page" + (LANGS.includes(b.lang) && b.lang !== "en" ? ` (${b.lang})` : ""),
     name, phone, email, country: str(b.country, 60), pickup: str(b.pickup, 120), notes: str(b.notes, 600),
-    packageId: pkg.id, packageName: pkg.name, date, slot: slot.id, slotLabel: slot.label, slotTime: slot.time,
+    packageId: pkg.id, packageName: pkg.name, date, slot: slot.id, slotLabel: slot.label, slotTime: time,
     adults, kids, addons: q.addonNames, total: q.total,
   };
 

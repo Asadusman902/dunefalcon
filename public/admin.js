@@ -122,10 +122,10 @@
     const sch = S.schedule, pane = $('[data-pane="schedule"]');
     const next = []; for (let i = 0; i < 7; i++) next.push(dubaiKey(i));
     pane.innerHTML = `<div class="grid2">
-     <div class="panel"><h3 style="font-size:22px;margin-bottom:4px">Pickup slots</h3><p class="muted" style="margin:0 0 10px;font-size:13px">Pickup times shown on the booking page (Dubai time). Capacity is total guests per slot per day. Bookings stop when it's full.</p>
+     <div class="panel"><h3 style="font-size:22px;margin-bottom:4px">Pickup slots</h3><p class="muted" style="margin:0 0 10px;font-size:13px">Customers pick Morning or Evening first, then one of its pickup times (Dubai time, separate with commas). Capacity is total guests per slot per day. Bookings stop when it's full.</p>
        <div id="slotRows">${sch.slots.map((s, i) => `<div class="slot-row" data-i="${i}">
          <label class="field">Name<input data-k="label" value="${esc(s.label)}"></label>
-         <label class="field">Pickup<input data-k="time" type="time" value="${esc(s.time)}"></label>
+         <label class="field">Pickup times<input data-k="times" value="${esc((s.times || [s.time]).join(", "))}" placeholder="14:00, 14:30, 15:00"></label>
          <label class="field">Capacity<input data-k="capacity" type="number" min="1" value="${+s.capacity || 0}"></label>
          <button class="btn sm ghost danger" data-del-slot="${i}">Remove</button></div>`).join("")}</div>
        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="addSlot">Add slot</button></div>
@@ -147,7 +147,16 @@
        }).join("")}
      </div></div>`;
   }
-  const readSlotsFromForm = () => $$("#slotRows .slot-row").map((r, i) => { const o = S.schedule.slots[i] || {}; return { id: o.id || "slot" + Date.now().toString(36) + i, label: $('[data-k="label"]', r).value.trim() || "Slot", time: $('[data-k="time"]', r).value || "15:00", capacity: +$('[data-k="capacity"]', r).value || 1 }; });
+  // "14:00, 2:30 pm, 15:00" -> sorted 24h list; "time" is the first pickup.
+  function slotTimesFrom(v) {
+    const times = [...new Set(String(v).split(/[,\s]+(?=\d)/).map((x) => {
+      const m = x.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/); if (!m) return null;
+      let h = +m[1]; const mi = +(m[2] || 0); if (m[3] === "pm" && h < 12) h += 12; if (m[3] === "am" && h === 12) h = 0;
+      return h < 24 && mi < 60 ? String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0") : null;
+    }).filter(Boolean))].sort();
+    return { times: times.length ? times : ["15:00"], time: times[0] || "15:00" };
+  }
+  const readSlotsFromForm = () => $$("#slotRows .slot-row").map((r, i) => { const o = S.schedule.slots[i] || {}; return { id: o.id || "slot" + Date.now().toString(36) + i, label: $('[data-k="label"]', r).value.trim() || "Slot", ...slotTimesFrom($('[data-k="times"]', r).value), capacity: +$('[data-k="capacity"]', r).value || 1 }; });
   async function saveSchedule() {
     const sch = { ...S.schedule, slots: readSlotsFromForm(), openDays: $$("[data-day]").filter((c) => c.checked).map((c) => +c.dataset.day), cutoffHours: +$("#cutoff").value || 0 };
     try { await api("/api/admin/settings/schedule", { method: "PUT", body: sch }); S.schedule = sch; renderSchedule(); toast("Schedule saved · live on the booking page"); }
@@ -230,7 +239,7 @@
       const k = "lead:" + t.dataset.delLead; if (armed !== k) { armed = k; renderLeads(); return; }
       armed = null; try { await api("/api/admin/leads/" + t.dataset.delLead, { method: "DELETE" }); S.leads = S.leads.filter((l) => l._id !== t.dataset.delLead); renderAdmin(); toast("Lead deleted"); } catch (er) { toast(er.message); } return;
     }
-    if (t.id === "addSlot") { S.schedule.slots = readSlotsFromForm(); S.schedule.slots.push({ id: "slot" + Date.now().toString(36), label: "Sunrise", time: "05:30", capacity: 20 }); renderSchedule(); return; }
+    if (t.id === "addSlot") { S.schedule.slots = readSlotsFromForm(); S.schedule.slots.push({ id: "slot" + Date.now().toString(36), label: "Sunrise", time: "05:30", times: ["05:30"], capacity: 20 }); renderSchedule(); return; }
     if (t.dataset.delSlot) { S.schedule.slots = readSlotsFromForm(); S.schedule.slots.splice(+t.dataset.delSlot, 1); renderSchedule(); return; }
     if (t.id === "addBlk") { const v = $("#blkDate").value; if (v && !S.schedule.blocked.includes(v)) { S.schedule.slots = readSlotsFromForm(); S.schedule.blocked.push(v); renderSchedule(); } return; }
     if (t.dataset.unblk) { S.schedule.slots = readSlotsFromForm(); S.schedule.blocked = S.schedule.blocked.filter((d) => d !== t.dataset.unblk); renderSchedule(); return; }
