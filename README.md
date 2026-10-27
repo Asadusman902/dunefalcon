@@ -6,7 +6,7 @@ Booking landing page + admin dashboard. Every booking is:
 2. emailed to you (and a confirmation to the customer) via **Resend**
 3. sent to your **WhatsApp** via Meta's **WhatsApp Cloud API**
 
-Stack: Next.js 14 · Supabase · Resend · WhatsApp Cloud API · Hostinger (Node.js hosting).
+Stack: Next.js 14 · Supabase · Resend · WhatsApp Cloud API · Vercel.
 
 ---
 
@@ -49,42 +49,37 @@ Stack: Next.js 14 · Supabase · Resend · WhatsApp Cloud API · Hostinger (Node
 
 Until WhatsApp is set up, bookings still save and email normally. The site just skips the WhatsApp alert.
 
-## 4. Deploy on Hostinger (15 min)
+## 4. Deploy on Vercel (5 min)
 
-This is a Node.js app, not a static site. Do **not** upload it to `public_html` / File Manager. You need a Hostinger plan with **Node.js web apps** (Business or Cloud) or a **VPS**. Single and Premium web hosting cannot run it.
+**Option A: GitHub (recommended)**
+1. The code is on GitHub: `chaudhryasadusman0987-spec/dunefalcon` (private).
+2. vercel.com → log in → **Add New → Project** → import the repo.
+3. Before clicking Deploy, open **Environment Variables** and add every variable from `.env.example`.
+4. Deploy.
 
-### Option A: Business / Cloud plan (recommended)
-
-1. hPanel → **Websites** → **Add website** → **Node.js Apps**.
-2. Choose **Import Git repository**, connect GitHub and pick the `dunefalcon` repo, branch `main`.
-   (Or choose **Upload files** and upload a zip of this folder without `node_modules` and `.next`.)
-3. Build settings (Hostinger usually detects Next.js and fills these in):
-   - Framework: **Next.js**
-   - Node version: **20.x** (18.18 or newer works)
-   - Install: `npm install` · Build: `npm run build` · Start: `npm start`
-4. **Environment variables**: add every variable from `.env.example` with real values. `ADMIN_SESSION_SECRET` must be 24+ random characters.
-5. **Deploy**. Pick the client domain (e.g. `dunefalcondubai.com`) for the app when hPanel asks. If the domain is registered at Hostinger, DNS is set up for you, and SSL is issued automatically.
-6. Every push to `main` redeploys the site. After changing environment variables, redeploy from the app dashboard.
-
-### Option B: Hostinger VPS
-
+**Option B: from VS Code terminal**
 ```bash
-# on the VPS (Ubuntu), once
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs nginx git
-sudo npm install -g pm2
-git clone https://github.com/chaudhryasadusman0987-spec/dunefalcon.git && cd dunefalcon
-cp .env.example .env.local     # fill in real values
-npm install && npm run build
-pm2 start npm --name dunefalcon -- start   # serves on port 3000
-pm2 save && pm2 startup
+npm install
+npx vercel login          # log in with your Vercel email
+npx vercel                # first deploy (accept the defaults)
+# add env vars in vercel.com → Project → Settings → Environment Variables
+npx vercel --prod
 ```
 
-Then point Nginx at the app (`proxy_pass http://127.0.0.1:3000;`) for `dunefalcondubai.com`, add an **A** record for `@` and `www` to the VPS IP in hPanel DNS, and add SSL with `sudo certbot --nginx`.
+After adding or changing environment variables, redeploy (Deployments → ⋯ → Redeploy).
 
-To update later: `git pull && npm install && npm run build && pm2 restart dunefalcon`.
+### Custom domain (domain stays at Hostinger)
 
-**Email:** if the client uses Hostinger email on the same domain, leave the **MX** records alone.
+The domain and any email stay at Hostinger. Only the website records point to Vercel. The Hostinger web hosting plan is WordPress shared hosting and cannot run this Node.js app, so do not upload the site there.
+
+1. Vercel → Project → **Settings → Domains** → add `dunefalcondubai.com` and `www.dunefalcondubai.com`.
+2. hPanel → **Domains** → the domain → **DNS / Nameservers** → **DNS records**:
+   - Delete the existing **A** record for `@` and any **A** or **CNAME** record for `www`.
+   - Add **A** · name `@` · points to `76.76.21.21`
+   - Add **CNAME** · name `www` · points to `cname.vercel-dns.com`
+   - Leave the **MX** (and email-related TXT) records alone if the client uses email on this domain.
+   - If Vercel shows different values on its Domains page, use the ones Vercel shows.
+3. Wait a few minutes to a few hours. Vercel shows **Valid Configuration** and issues HTTPS automatically.
 
 ## 5. Use it
 
@@ -100,7 +95,7 @@ To update later: `git pull && npm install && npm run build && pm2 restart dunefa
 
 1. Make a booking on the live site with your own number and email.
 2. Check: lead in `/admin` · email in your inbox · WhatsApp alert.
-3. If something didn't arrive: open the app logs (hPanel → your Node.js app → **Logs**, or `pm2 logs dunefalcon` on a VPS) and search `[notify]`. Each channel logs `sent`, `skipped` (missing env var) or `failed` with the reason.
+3. If something didn't arrive: Vercel → Project → **Logs**, search `[notify]`. Each channel logs `sent`, `skipped` (missing env var) or `failed` with the reason.
 
 ## Run locally
 

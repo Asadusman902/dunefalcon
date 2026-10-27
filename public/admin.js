@@ -209,7 +209,7 @@
       <label class="field full">Email shown to customers<input id="bz-email" value="${esc(b.email)}"></label>
       <label class="field">DTCM licence no.<input id="bz-lic" value="${esc(b.licence)}" placeholder="Shown in the footer"></label>
       <label class="field">Currency<input id="bz-cur" value="${esc(b.currency || "AED")}"></label></div>
-      <p class="muted" style="font-size:13px;margin:12px 0 0">Where booking alerts go is set in the Hostinger environment variables (NOTIFY_EMAIL and NOTIFY_WHATSAPP). If those are empty, alerts go to the email and WhatsApp above.</p></div></div>
+      <p class="muted" style="font-size:13px;margin:12px 0 0">Where booking alerts go is set in Vercel (NOTIFY_EMAIL and NOTIFY_WHATSAPP). If those are empty, alerts go to the email and WhatsApp above.</p></div></div>
      <div style="margin-top:16px"><button class="btn gold" id="saveBiz">Save add-ons &amp; details</button></div>`;
   }
   const readAddons = () => $$("#adRows .ad-row").map((r, i) => ({ id: S.business.addons[i]?.id || "ad" + Date.now().toString(36) + i, name: $('[data-k="name"]', r).value.trim() || "Add-on", price: +$('[data-k="price"]', r).value || 0, unit: $('[data-k="unit"]', r).value }));
@@ -264,7 +264,7 @@
 
   (async function start() {
     $("#liveChip").textContent = "Loading…";
-    try { await loadConfig(); } catch (e) { $("#admGate").innerHTML = `<div class="note">Couldn't load settings: ${esc(e.message)}. Check the Supabase keys in the Hostinger environment variables.</div>`; return; }
+    try { await loadConfig(); } catch (e) { $("#admGate").innerHTML = `<div class="note">Couldn't load settings: ${esc(e.message)}. Check the Supabase keys in Vercel.</div>`; return; }
     await loadLeads();
     setInterval(() => { if (!document.hidden) loadLeads(true); }, 20000);
   })();
